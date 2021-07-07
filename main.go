@@ -5,11 +5,9 @@ import (
 	"bufio"
 	"bytes"
 	"crypto/rand"
+	_ "embed"
 	"encoding/binary"
 	"fmt"
-
-	"secretnamegenerator/embedded"
-	// github.com/jteeuwen/go-bindata
 )
 
 const (
@@ -17,16 +15,13 @@ const (
 	NounCount      uint32 = 1520
 )
 
-func main() {
-	rawAdj, err := embedded.Asset("adjectives.txt")
-	if err != nil {
-		panic(err)
-	}
-	rawNoun, err := embedded.Asset("nouns.txt")
-	if err != nil {
-		panic(err)
-	}
+//go:embed assets/adjectives.txt
+var rawAdj []byte
 
+//go:embed assets/nouns.txt
+var rawNoun []byte
+
+func main() {
 	adjScan := bufio.NewScanner(bytes.NewBuffer(rawAdj))
 	num := cryptoInt32() % AdjectiveCount
 	adjScan.Scan() // must scan at least once to get anything from the scanner
@@ -43,7 +38,7 @@ func main() {
 	}
 	noun := nounScan.Text()
 
-	fmt.Printf("%s%s", adj, noun)
+	fmt.Printf("%s %s\n", adj, noun)
 }
 
 func cryptoInt32() uint32 {
