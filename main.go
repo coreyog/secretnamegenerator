@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	AdjectiveCount uint32 = 1304
+	AdjectiveCount uint32 = 1305
 	NounCount      uint32 = 1520
 )
 
