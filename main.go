@@ -4,16 +4,43 @@ package main
 import (
 	"bufio"
 	"bytes"
-	"crypto/rand"
 	_ "embed"
-	"encoding/binary"
 	"fmt"
+	"math/rand/v2"
+	"os"
+	"runtime/debug"
+	"strings"
+
+	"github.com/jessevdk/go-flags"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 const (
 	AdjectiveCount uint32 = 1305
 	NounCount      uint32 = 1520
 )
+
+type Arguments struct {
+	LowerCase bool `short:"l" long:"lower" description:"Lowercase output"`
+	TitleCase bool `short:"t" long:"title" description:"Titlecase output"`
+	OneWord   bool `short:"1" long:"one" description:"Output as one word"`
+	Dash      bool `short:"d" long:"dash" description:"Output with a dash"`
+}
+
+func (a *Arguments) Validate() error {
+	if a.LowerCase && a.TitleCase {
+		return fmt.Errorf("cannot specify both lower and title case")
+	}
+
+	if a.OneWord && a.Dash {
+		return fmt.Errorf("cannot specify both one and dash")
+	}
+
+	return nil
+}
+
+var args Arguments
 
 //go:embed assets/adjectives.txt
 var rawAdj []byte
@@ -22,27 +49,57 @@ var rawAdj []byte
 var rawNoun []byte
 
 func main() {
-	adjScan := bufio.NewScanner(bytes.NewBuffer(rawAdj))
-	num := cryptoInt32() % AdjectiveCount
-	adjScan.Scan() // must scan at least once to get anything from the scanner
-	for i := uint32(0); i < num; i++ {
-		adjScan.Scan()
-	}
-	adj := adjScan.Text()
+	_, err := flags.Parse(&args)
+	if err != nil {
+		if flags.WroteHelp(err) {
+			info, ok := debug.ReadBuildInfo()
+			if ok {
+				fmt.Println(info.Main.Version)
+			}
 
-	nounScan := bufio.NewScanner(bytes.NewBuffer(rawNoun))
-	num = cryptoInt32() % NounCount
-	nounScan.Scan() // must scan at least once to get anything from the scanner
-	for i := uint32(0); i < num; i++ {
-		nounScan.Scan()
-	}
-	noun := nounScan.Text()
+			return
+		}
 
-	fmt.Printf("%s %s\n", adj, noun)
+		os.Exit(1)
+	}
+
+	err = args.Validate()
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
+	adj := wordFromList(rawAdj, AdjectiveCount)
+	noun := wordFromList(rawNoun, NounCount)
+
+	if args.TitleCase {
+		titler := cases.Title(language.English)
+		adj = titler.String(adj)
+		noun = titler.String(noun)
+	} else if args.LowerCase {
+		adj = strings.ToLower(adj)
+		noun = strings.ToLower(noun)
+	}
+
+	sep := " "
+	if args.OneWord {
+		sep = ""
+	} else if args.Dash {
+		sep = "-"
+	}
+
+	fmt.Printf("%s%s%s\n", adj, sep, noun)
 }
 
-func cryptoInt32() uint32 {
-	buffer := make([]byte, 4)
-	rand.Read(buffer) // nolint, shut up linter, this won't error
-	return binary.BigEndian.Uint32(buffer)
+func wordFromList(list []byte, count uint32) string {
+	scanner := bufio.NewScanner(bytes.NewBuffer(list))
+	scanner.Scan() // must scan at least once to get anything from the scanner
+
+	num := rand.Uint32() % count
+
+	for range num {
+		scanner.Scan()
+	}
+
+	return scanner.Text()
 }

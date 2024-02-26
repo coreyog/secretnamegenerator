@@ -1,20 +1,32 @@
 package main
 
 import (
-	"bytes"
+	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestCounts(t *testing.T) {
-	adj := bytes.Split(rawAdj, []byte("\n"))
-	if len(adj) != int(AdjectiveCount) {
-		t.Fail()
-		t.Logf("Adjective Count, Expected: %d, Actual: %d", AdjectiveCount, len(adj))
-	}
+	lineCount := uint32(strings.Count(string(rawAdj), "\n") + 1)
+	assert.Equal(t, AdjectiveCount, lineCount)
 
-	nouns := bytes.Split(rawNoun, []byte("\n"))
-	if len(nouns) != int(NounCount) {
-		t.Fail()
-		t.Logf("Noun Count, Expected: %d, Actual: %d", NounCount, len(nouns))
+	lineCount = uint32(strings.Count(string(rawNoun), "\n") + 1)
+	assert.Equal(t, NounCount, lineCount)
+}
+
+func TestWordFromList(t *testing.T) {
+	words := []string{
+		"one",
+		"two",
+		"three",
+		"four",
+		"five",
+	}
+	list := strings.Join(words, "\n")
+
+	for range len(words) * 10 {
+		word := wordFromList([]byte(list), uint32(len(words)))
+		assert.Contains(t, words, word)
 	}
 }
